@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+:root {
+  /* colors that don't change between themes */
+  --color-ink: #1a1720;
+  --color-brand: #7c5cfc;
+  --color-lime: #d4ff3d;
+  --color-coral: #ff4d6d;
+}
+
+:root,
+:root[data-theme="dark"] {
+  --color-bg: #0f0d14;
+  --color-surface: #fbf7f0;
+  --color-brand-soft: #a48dff;
+  --color-muted: #a79fc0;
+  --color-hairline: rgba(255, 255, 255, 0.1);
+  --color-hairline-strong: rgba(255, 255, 255, 0.25);
+  --color-raise-1: rgba(255, 255, 255, 0.05);
+  --color-raise-2: rgba(255, 255, 255, 0.03);
+  --color-elevated: #1a1720;
+}
+
+:root[data-theme="light"] {
+  --color-bg: #f6f4f0;
+  --color-surface: #1a1720;
+  --color-brand-soft: #5b3fd1;
+  --color-muted: #6b6478;
+  --color-hairline: rgba(0, 0, 0, 0.12);
+  --color-hairline-strong: rgba(0, 0, 0, 0.28);
+  --color-raise-1: rgba(0, 0, 0, 0.035);
+  --color-raise-2: rgba(0, 0, 0, 0.025);
+  --color-elevated: #ffffff;
+}
+
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-ink: var(--color-ink);
+  --color-brand: var(--color-brand);
+  --color-brand-soft: var(--color-brand-soft);
+  --color-lime: var(--color-lime);
+  --color-coral: var(--color-coral);
+  --color-muted: var(--color-muted);
+  --color-hairline: var(--color-hairline);
+  --color-hairline-strong: var(--color-hairline-strong);
+  --color-raise-1: var(--color-raise-1);
+  --color-raise-2: var(--color-raise-2);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+  --color-elevated: var(--color-elevated);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-surface);
+  font-family: var(--font-body), sans-serif;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
