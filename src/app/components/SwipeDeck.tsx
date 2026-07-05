@@ -1,19 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Heart, X } from "lucide-react";
+import { Heart, X, Undo2 } from "lucide-react";
 import SwipeCard, { type SwipeItem } from "./SwipeCard";
 
 export default function SwipeDeck({
   items,
   totalCount,
   onSwipe,
+  onUndo,
+  canUndo,
 }: {
   /** remaining items this participant hasn't swiped on yet, in a stable order */
   items: SwipeItem[];
   /** total options in the room, for the progress bar */
   totalCount: number;
   onSwipe: (itemId: string, direction: "like" | "skip") => void;
+  onUndo: () => void;
+  canUndo: boolean;
 }) {
   const [exiting, setExiting] = useState<{ item: SwipeItem; direction: "like" | "skip" } | null>(
     null
@@ -61,6 +65,15 @@ export default function SwipeDeck({
               Waiting on everyone else to finish swiping. This reveals the
               second there&apos;s a match.
             </p>
+            {canUndo && (
+              <button
+                onClick={onUndo}
+                className="mt-4 flex items-center gap-1.5 rounded-full border border-hairline bg-raise-1 px-3 py-1.5 font-mono text-xs text-muted hover:text-surface"
+              >
+                <Undo2 size={13} />
+                Undo last swipe
+              </button>
+            )}
           </div>
         ) : (
           visible.map((item, i) => (
@@ -77,13 +90,21 @@ export default function SwipeDeck({
       </div>
 
       {!done && (
-        <div className="flex items-center justify-center gap-8 px-6 py-8">
+        <div className="flex items-center justify-center gap-6 px-6 py-8">
           <button
             onClick={() => items[0] && triggerSwipe(items[0], "skip")}
             aria-label="Skip"
             className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-coral/60 bg-raise-1 text-coral transition-transform active:scale-90"
           >
             <X size={28} strokeWidth={2.5} />
+          </button>
+          <button
+            onClick={onUndo}
+            disabled={!canUndo}
+            aria-label="Undo last swipe"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-hairline bg-raise-1 text-muted transition-transform active:scale-90 disabled:opacity-30"
+          >
+            <Undo2 size={16} />
           </button>
           <button
             onClick={() => items[0] && triggerSwipe(items[0], "like")}

@@ -35,6 +35,9 @@ export default function LobbyView({
     if (navigator.clipboard && navigator.clipboard.writeText) {
       await navigator.clipboard.writeText(link);
     } else {
+      // navigator.clipboard needs a secure context (https, or
+      // localhost) — it's undefined over a plain http:// IP address.
+      // Fall back to the old-school textarea + execCommand trick.
       const textarea = document.createElement("textarea");
       textarea.value = link;
       textarea.style.position = "fixed";
@@ -72,6 +75,9 @@ export default function LobbyView({
         // user cancelled the share sheet — not an error, do nothing
       }
     } else {
+      // No native share sheet available (desktop browsers, or a
+      // non-secure context) — fall back to copying the link, with its
+      // own feedback so it's clear which button actually did something.
       try {
         await copyLinkToClipboard(link);
         setShareCopied(true);

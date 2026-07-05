@@ -14,13 +14,15 @@ export type SwipeItem = {
   imageType: "upload" | "ai" | "none";
 };
 
-// A small set of gradients so "no image" cards still feel distinct from
-// each other instead of all looking identical.
+// Vivid, legible gradient pairs for options with no photo — no black/ink
+// fade, since white text needs to stay readable across the whole card,
+// not just near the top.
 const PLACEHOLDER_GRADIENTS = [
-  "from-brand/60 via-ink to-ink",
-  "from-coral/50 via-ink to-ink",
-  "from-lime/40 via-ink to-ink",
-  "from-brand-soft/50 via-ink to-ink",
+  "from-[#8b5cf6] to-[#4c2fb8]",
+  "from-[#ff6f61] to-[#c9294f]",
+  "from-[#4f8ff0] to-[#2a4fc9]",
+  "from-[#ff9d4d] to-[#e8503d]",
+  "from-[#3ecf8e] to-[#1e8f6b]",
 ];
 
 function gradientFor(id: string) {
@@ -56,6 +58,7 @@ export default function SwipeCard({
   }
 
   const exitX = forcedDirection === "like" ? 500 : forcedDirection === "skip" ? -500 : 0;
+  const hasImage = !!item.imageUrl;
 
   return (
     <motion.div
@@ -86,26 +89,53 @@ export default function SwipeCard({
       onDragEnd={handleDragEnd}
     >
       <div className="relative h-full w-full overflow-hidden rounded-[28px] border border-hairline bg-ink shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)]">
-        {item.imageUrl ? (
-          <Image
-            src={item.imageUrl}
-            alt={item.title}
-            fill
-            sizes="(max-width: 480px) 100vw, 420px"
-            className="object-cover"
-            draggable={false}
-            priority={stackPosition === 0}
-          />
+        {hasImage ? (
+          <>
+            <Image
+              src={item.imageUrl as string}
+              alt={item.title}
+              fill
+              sizes="(max-width: 480px) 100vw, 420px"
+              className="object-cover"
+              draggable={false}
+              priority={stackPosition === 0}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
+
+            {item.imageType === "ai" && (
+              <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-black/50 px-2.5 py-1 font-mono text-[10px] text-brand-soft backdrop-blur-sm">
+                <Sparkles size={11} />
+                AI generated
+              </div>
+            )}
+
+            <div className="absolute inset-x-0 bottom-0 p-6">
+              <h2 className="font-display text-3xl font-extrabold leading-tight text-white">
+                {item.title}
+              </h2>
+              {item.description && (
+                <p className="mt-2 text-sm text-white/80">{item.description}</p>
+              )}
+            </div>
+          </>
         ) : (
-          <div className={`absolute inset-0 bg-gradient-to-br ${gradientFor(item.id)}`} />
-        )}
-
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
-
-        {item.imageType === "ai" && (
-          <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-black/50 px-2.5 py-1 font-mono text-[10px] text-brand-soft backdrop-blur-sm">
-            <Sparkles size={11} />
-            AI generated
+          <div
+            className={`absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br ${gradientFor(
+              item.id
+            )} px-8 text-center`}
+          >
+            {/* oversized watermark letter for visual interest */}
+            <span className="pointer-events-none absolute font-display text-[220px] font-extrabold leading-none text-white/10">
+              {item.title.trim().charAt(0).toUpperCase() || "?"}
+            </span>
+            <h2 className="relative font-display text-3xl font-extrabold leading-tight text-white">
+              {item.title}
+            </h2>
+            {item.description && (
+              <p className="relative mt-3 max-w-[240px] text-sm text-white/85">
+                {item.description}
+              </p>
+            )}
           </div>
         )}
 
@@ -125,15 +155,6 @@ export default function SwipeCard({
             </motion.div>
           </>
         )}
-
-        <div className="absolute inset-x-0 bottom-0 p-6">
-          <h2 className="font-display text-3xl font-extrabold leading-tight text-surface">
-            {item.title}
-          </h2>
-          {item.description && (
-            <p className="mt-2 text-sm text-surface/80">{item.description}</p>
-          )}
-        </div>
       </div>
     </motion.div>
   );

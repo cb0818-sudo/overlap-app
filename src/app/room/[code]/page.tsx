@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowRight, Loader2, Undo2, Sparkles } from "lucide-react";
+import { ArrowRight, Loader2, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { getClientId } from "@/lib/clientId";
 import { computeReveal, bestOptionSoFar } from "@/lib/matching";
@@ -68,10 +68,6 @@ export default function RoomPage() {
     if (mine.length === 0) return null;
     return mine.reduce((latest, s) => (s.created_at > latest.created_at ? s : latest));
   }, [swipes, myParticipant]);
-
-  const myLastSwipeTitle = myLastSwipe
-    ? options.find((o) => o.id === myLastSwipe.option_id)?.title ?? null
-    : null;
 
   async function handleSwipe(optionId: string, direction: "like" | "skip") {
     if (!myParticipant) return;
@@ -215,17 +211,8 @@ export default function RoomPage() {
   // status === 'swiping'
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-bg px-4 py-10">
-      <div className="mb-3 flex w-full max-w-[400px] items-center justify-between gap-2 px-1">
-        <button
-          onClick={handleUndo}
-          disabled={!myLastSwipe}
-          className="flex items-center gap-1.5 rounded-full border border-hairline bg-raise-1 px-3 py-1.5 font-mono text-[11px] text-muted disabled:opacity-30"
-          title={myLastSwipeTitle ? `Undo: ${myLastSwipeTitle}` : undefined}
-        >
-          <Undo2 size={12} />
-          Undo
-        </button>
-        {myParticipant.is_host && (
+      {myParticipant.is_host && (
+        <div className="mb-3 flex w-full max-w-[400px] justify-end px-1">
           <button
             onClick={handleRevealNow}
             disabled={revealing}
@@ -234,11 +221,17 @@ export default function RoomPage() {
             {revealing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
             Reveal now
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       <div className="relative h-[720px] w-full max-w-[400px] overflow-hidden rounded-[40px] border border-hairline bg-gradient-to-b from-raise-1 to-transparent shadow-[0_0_0_1px_var(--color-hairline)]">
-        <SwipeDeck items={myRemainingItems} totalCount={options.length} onSwipe={handleSwipe} />
+        <SwipeDeck
+          items={myRemainingItems}
+          totalCount={options.length}
+          onSwipe={handleSwipe}
+          onUndo={handleUndo}
+          canUndo={!!myLastSwipe}
+        />
       </div>
     </main>
   );

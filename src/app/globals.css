@@ -46,10 +46,10 @@
   --color-hairline-strong: var(--color-hairline-strong);
   --color-raise-1: var(--color-raise-1);
   --color-raise-2: var(--color-raise-2);
+  --color-elevated: var(--color-elevated);
   --font-display: var(--font-display);
   --font-body: var(--font-body);
   --font-mono: var(--font-mono);
-  --color-elevated: var(--color-elevated);
 }
 
 * {

@@ -79,6 +79,15 @@ export function useRoomState(code: string): RoomState {
       )
       .on(
         "postgres_changes",
+        { event: "DELETE", schema: "public", table: "participants" },
+        (payload) => {
+          const row = payload.old as Partial<Participant>;
+          if (!row.id) return;
+          setParticipants((prev) => prev.filter((p) => p.id !== row.id));
+        }
+      )
+      .on(
+        "postgres_changes",
         { event: "INSERT", schema: "public", table: "options", filter: `room_id=eq.${code}` },
         (payload) => {
           const row = payload.new as OptionRow;
@@ -87,10 +96,28 @@ export function useRoomState(code: string): RoomState {
       )
       .on(
         "postgres_changes",
+        { event: "DELETE", schema: "public", table: "options" },
+        (payload) => {
+          const row = payload.old as Partial<OptionRow>;
+          if (!row.id) return;
+          setOptions((prev) => prev.filter((o) => o.id !== row.id));
+        }
+      )
+      .on(
+        "postgres_changes",
         { event: "INSERT", schema: "public", table: "swipes", filter: `room_id=eq.${code}` },
         (payload) => {
           const row = payload.new as SwipeRow;
           setSwipes((prev) => (prev.some((s) => s.id === row.id) ? prev : [...prev, row]));
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "swipes" },
+        (payload) => {
+          const row = payload.old as Partial<SwipeRow>;
+          if (!row.id) return;
+          setSwipes((prev) => prev.filter((s) => s.id !== row.id));
         }
       )
       .subscribe();
