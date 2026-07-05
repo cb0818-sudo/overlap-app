@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { PartyPopper, RotateCcw, Home, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -13,14 +12,15 @@ export default function RevealView({
   winner,
   participants,
   isHost,
+  onLeave,
 }: {
   code: string;
   room: Room;
   winner: OptionRow | null;
   participants: Participant[];
   isHost: boolean;
+  onLeave: () => void;
 }) {
-  const router = useRouter();
   const [resetting, setResetting] = useState(false);
 
   async function handleSwipeAgain() {
@@ -77,7 +77,7 @@ export default function RevealView({
           </button>
         )}
         <button
-          onClick={() => router.push("/")}
+          onClick={onLeave}
           className="flex w-full items-center justify-center gap-2 rounded-2xl border border-hairline px-5 py-4 font-display text-sm font-extrabold text-surface"
         >
           <Home size={16} />

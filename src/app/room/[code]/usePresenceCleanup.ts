@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
-async function cleanUpParticipant(participantId: string) {
+export async function cleanUpParticipant(participantId: string) {
   try {
     // Explicitly remove their options (not just orphan them) — the FK is
     // ON DELETE SET NULL so this wouldn't happen automatically, but the

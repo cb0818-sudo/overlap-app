@@ -105,6 +105,14 @@ export function useRoomState(code: string): RoomState {
       )
       .on(
         "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "options", filter: `room_id=eq.${code}` },
+        (payload) => {
+          const row = payload.new as OptionRow;
+          setOptions((prev) => prev.map((o) => (o.id === row.id ? row : o)));
+        }
+      )
+      .on(
+        "postgres_changes",
         { event: "INSERT", schema: "public", table: "swipes", filter: `room_id=eq.${code}` },
         (payload) => {
           const row = payload.new as SwipeRow;
@@ -127,7 +135,6 @@ export function useRoomState(code: string): RoomState {
       supabase.removeChannel(channel);
     };
   }, [code]);
-
 
   // Bulk deletes (like resetting swipes for "swipe again") notify
   // subscribers per-row, and those can lag slightly behind a room's

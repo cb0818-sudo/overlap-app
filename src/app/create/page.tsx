@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Loader2, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, Loader2, ArrowLeft, AlertTriangle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { generateRoomCode } from "@/lib/roomCode";
 import { getClientId } from "@/lib/clientId";
@@ -10,6 +10,7 @@ import ImagePicker from "../components/ImagePicker";
 import AutocompleteInput from "../components/AutocompleteInput";
 import { FOOD_SUGGESTIONS } from "@/lib/foodSuggestions";
 import { generateId } from "@/lib/id";
+import { normalizeTitle } from "@/lib/normalizeTitle";
 import type { ImageType } from "@/lib/types";
 
 type DraftOption = {
@@ -47,7 +48,22 @@ export default function CreateRoomPage() {
   }
 
   const validOptions = options.filter((o) => o.title.trim().length > 0);
-  const canSubmit = hostName.trim().length > 0 && validOptions.length >= 2 && !submitting;
+  const duplicateKeys = new Set<string>();
+  {
+    const seen = new Map<string, string>(); // normalized title -> first key
+    for (const o of validOptions) {
+      const key = normalizeTitle(o.title);
+      if (seen.has(key)) {
+        duplicateKeys.add(seen.get(key) as string);
+        duplicateKeys.add(o.key);
+      } else {
+        seen.set(key, o.key);
+      }
+    }
+  }
+  const hasDuplicates = duplicateKeys.size > 0;
+  const canSubmit =
+    hostName.trim().length > 0 && validOptions.length >= 2 && !hasDuplicates && !submitting;
 
   async function handleCreate() {
     if (!canSubmit) return;
@@ -175,8 +191,18 @@ export default function CreateRoomPage() {
                 onChange={(v) => updateOption(option.key, { title: v })}
                 suggestions={FOOD_SUGGESTIONS}
                 placeholder="Name (e.g. Casa Elena)"
-                className="w-full rounded-lg border border-hairline bg-raise-1 px-3 py-2.5 text-sm text-surface placeholder:text-muted/60 focus:border-brand focus:outline-none"
+                className={`w-full rounded-lg border bg-raise-1 px-3 py-2.5 text-sm text-surface placeholder:text-muted/60 focus:outline-none ${
+                  duplicateKeys.has(option.key)
+                    ? "border-coral focus:border-coral"
+                    : "border-hairline focus:border-brand"
+                }`}
               />
+              {duplicateKeys.has(option.key) && (
+                <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-coral/10 px-3 py-2 text-xs text-coral">
+                  <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                  <span>Same name as another option — give one of them a different name.</span>
+                </div>
+              )}
               <input
                 value={option.description}
                 onChange={(e) => updateOption(option.key, { description: e.target.value })}
@@ -207,6 +233,9 @@ export default function CreateRoomPage() {
         </div>
 
         {error && <p className="mt-4 text-sm text-coral">{error}</p>}
+        {hasDuplicates && !error && (
+          <p className="mt-4 text-sm text-coral">Fix the duplicate option names above to continue.</p>
+        )}
 
         <button
           onClick={handleCreate}

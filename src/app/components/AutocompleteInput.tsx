@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { normalizeTitle } from "@/lib/normalizeTitle";
 
 export default function AutocompleteInput({
   value,
@@ -21,15 +22,12 @@ export default function AutocompleteInput({
   const matches = useMemo(() => {
     const query = value.trim().toLowerCase();
     if (query.length < 2) return [];
-    // Strip spaces/hyphens on both sides so "cheese ca" still matches
-    // "Cheesecake", and "e mail" would match "E-Mail", etc.
-    const normalize = (s: string) => s.toLowerCase().replace(/[\s-]+/g, "");
-    const normalizedQuery = normalize(query);
+    const normalizedQuery = normalizeTitle(query);
     return suggestions
-      .filter((s) => normalize(s).includes(normalizedQuery))
+      .filter((s) => normalizeTitle(s).includes(normalizedQuery))
       .sort((a, b) => {
-        const aStarts = normalize(a).startsWith(normalizedQuery) ? 0 : 1;
-        const bStarts = normalize(b).startsWith(normalizedQuery) ? 0 : 1;
+        const aStarts = normalizeTitle(a).startsWith(normalizedQuery) ? 0 : 1;
+        const bStarts = normalizeTitle(b).startsWith(normalizedQuery) ? 0 : 1;
         if (aStarts !== bStarts) return aStarts - bStarts;
         return a.length - b.length;
       })

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, Plus, Crown, Loader2, Share2 } from "lucide-react";
+import { Check, Copy, Plus, Crown, Loader2, Share2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { normalizeTitle } from "@/lib/normalizeTitle";
 import ImagePicker from "../../components/ImagePicker";
 import AutocompleteInput from "../../components/AutocompleteInput";
 import { FOOD_SUGGESTIONS } from "@/lib/foodSuggestions";
@@ -30,6 +31,11 @@ export default function LobbyView({
   const [imageType, setImageType] = useState<ImageType>("none");
   const [adding, setAdding] = useState(false);
   const [starting, setStarting] = useState(false);
+
+  const duplicateOfExisting =
+    title.trim().length > 0
+      ? options.find((o) => normalizeTitle(o.title) === normalizeTitle(title))
+      : undefined;
 
   async function copyLinkToClipboard(link: string) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -89,7 +95,7 @@ export default function LobbyView({
   }
 
   async function handleAddOption() {
-    if (!title.trim()) return;
+    if (!title.trim() || duplicateOfExisting) return;
     setAdding(true);
     await supabase.from("options").insert({
       room_id: code,
@@ -181,7 +187,11 @@ export default function LobbyView({
               onChange={setTitle}
               suggestions={FOOD_SUGGESTIONS}
               placeholder="Name"
-              className="w-full rounded-lg border border-hairline bg-raise-1 px-3 py-2.5 text-sm text-surface placeholder:text-muted/60 focus:border-brand focus:outline-none"
+              className={`w-full rounded-lg border bg-raise-1 px-3 py-2.5 text-sm text-surface placeholder:text-muted/60 focus:outline-none ${
+                duplicateOfExisting
+                  ? "border-coral focus:border-coral"
+                  : "border-hairline focus:border-brand"
+              }`}
             />
             <input
               value={description}
@@ -200,6 +210,16 @@ export default function LobbyView({
                 }}
               />
             </div>
+            {duplicateOfExisting && (
+              <div className="mt-2 flex items-start gap-1.5 rounded-lg bg-coral/10 px-3 py-2 text-xs text-coral">
+                <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                <span>
+                  &ldquo;{duplicateOfExisting.title}&rdquo; is already in this room — pick a
+                  different name to add it as a new option.
+                </span>
+              </div>
+            )}
+
             <div className="mt-3 flex gap-2">
               <button
                 onClick={() => setShowAddForm(false)}
@@ -209,7 +229,7 @@ export default function LobbyView({
               </button>
               <button
                 onClick={handleAddOption}
-                disabled={!title.trim() || adding}
+                disabled={!title.trim() || !!duplicateOfExisting || adding}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-mono text-xs font-medium text-white disabled:opacity-40"
               >
                 {adding && <Loader2 size={13} className="animate-spin" />}

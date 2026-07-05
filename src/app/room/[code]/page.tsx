@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { getClientId } from "@/lib/clientId";
 import { computeReveal, bestOptionSoFar } from "@/lib/matching";
 import { useRoomState } from "./useRoomState";
-import { usePresenceCleanup } from "./usePresenceCleanup";
+import { usePresenceCleanup, cleanUpParticipant } from "./usePresenceCleanup";
 import LobbyView from "./LobbyView";
 import RevealView from "./RevealView";
 import SwipeDeck from "../../components/SwipeDeck";
@@ -27,20 +27,34 @@ export default function RoomPage() {
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [revealing, setRevealing] = useState(false);
-
+  // The instant everyone's done, room.status flips to 'revealed' — but if
+  // you were mid-swipe on your own last card at that exact moment, the
+  // screen would swap away before your card's exit animation finished.
+  // Give it a beat before actually switching views.
+  const [showReveal, setShowReveal] = useState(false);
+  useEffect(() => {
+    if (room?.status === "revealed" && !showReveal) {
+      const timer = setTimeout(() => setShowReveal(true), 400);
+      return () => clearTimeout(timer);
+    }
+  }, [room?.status, showReveal]);
   // Swiping fast can outrun the network round-trip to Supabase and back.
   // This tracks "I already swiped this" the instant it happens locally,
-  // s o the deck never shows a card twice while waiting to hear back.
+  // so the deck never shows a card twice while waiting to hear back.
   const [optimisticSwipedIds, setOptimisticSwipedIds] = useState<Set<string>>(new Set());
   // A new round (back in the lobby) means any locally-tracked "already
   // swiped" state from the previous round is stale — clear it. Done
   // during render (React's sanctioned "reset state when a prop changes"
-  // pattern) rather than in an effect.
+  // pattern) rather than in an effect, since this needs to happen before
+  // the deck below computes from stale ids, not after.
   const [lastSeenStatus, setLastSeenStatus] = useState(room?.status);
   if (room?.status !== lastSeenStatus) {
     setLastSeenStatus(room?.status);
     if (room?.status === "lobby" && optimisticSwipedIds.size > 0) {
       setOptimisticSwipedIds(new Set());
+    }
+    if (room?.status !== "revealed" && showReveal) {
+      setShowReveal(false);
     }
   }
 
@@ -96,6 +110,8 @@ export default function RoomPage() {
     });
     if (error) {
       console.error(error);
+      // Insert failed for real (not just "already exists") — let the
+      // card come back so the swipe isn't silently lost.
       setOptimisticSwipedIds((prev) => {
         const next = new Set(prev);
         next.delete(optionId);
@@ -130,6 +146,20 @@ export default function RoomPage() {
       .eq("id", code)
       .eq("status", "swiping");
     setRevealing(false);
+  }
+
+  async function handleLeaveRoom() {
+    if (!myParticipant) {
+      router.push("/");
+      return;
+    }
+    const confirmed = window.confirm("Leave this room? You'll be removed and any options you added will be removed too.");
+    if (!confirmed) return;
+    // Do this explicitly rather than relying on presence-detection alone
+    // — presence is near-instant but not guaranteed instant, and this
+    // way it's already done before you even leave the page.
+    await cleanUpParticipant(myParticipant.id);
+    router.push("/");
   }
 
   async function handleJoinInline(e: React.FormEvent) {
@@ -226,7 +256,7 @@ export default function RoomPage() {
     );
   }
 
-  if (room.status === "revealed") {
+  if (room.status === "revealed" && showReveal) {
     const winner = options.find((o) => o.id === room.matched_option_id) ?? null;
     return (
       <main className="min-h-screen bg-bg">
@@ -236,6 +266,7 @@ export default function RoomPage() {
           winner={winner}
           participants={participants}
           isHost={myParticipant.is_host}
+          onLeave={handleLeaveRoom}
         />
       </main>
     );
