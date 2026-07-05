@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, Plus, Crown, Loader2, Share2, AlertTriangle } from "lucide-react";
+import { Check, Copy, Plus, Crown, Loader2, Share2, AlertTriangle, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { normalizeTitle } from "@/lib/normalizeTitle";
+import { mergeOptionPair } from "@/lib/dedupeOptions";
 import ImagePicker from "../../components/ImagePicker";
 import AutocompleteInput from "../../components/AutocompleteInput";
 import { FOOD_SUGGESTIONS } from "@/lib/foodSuggestions";
@@ -31,6 +32,57 @@ export default function LobbyView({
   const [imageType, setImageType] = useState<ImageType>("none");
   const [adding, setAdding] = useState(false);
   const [starting, setStarting] = useState(false);
+  const [merging, setMerging] = useState(false);
+
+  // Groups of 2+ existing options that share a normalized title — these
+  // predate the duplicate-blocking check (or slipped in some other way)
+  // and need an explicit cleanup pass rather than being prevented.
+  const duplicateGroups = (() => {
+    const groups = new Map<string, OptionRow[]>();
+    for (const o of options) {
+      const key = normalizeTitle(o.title);
+      groups.set(key, [...(groups.get(key) ?? []), o]);
+    }
+    return [...groups.values()].filter((g) => g.length > 1);
+  })();
+
+  async function handleMergeDuplicates() {
+    setMerging(true);
+    try {
+      for (const group of duplicateGroups) {
+        const sorted = [...group].sort((a, b) => a.created_at.localeCompare(b.created_at));
+        const [keep, ...rest] = sorted;
+        let merged = {
+          title: keep.title,
+          description: keep.description,
+          imageUrl: keep.image_url,
+          imageType: keep.image_type,
+        };
+        for (const dupe of rest) {
+          merged = mergeOptionPair(merged, {
+            title: dupe.title,
+            description: dupe.description,
+            imageUrl: dupe.image_url,
+            imageType: dupe.image_type,
+          });
+        }
+        await supabase
+          .from("options")
+          .update({
+            description: merged.description,
+            image_url: merged.imageUrl,
+            image_type: merged.imageType,
+          })
+          .eq("id", keep.id);
+        await supabase
+          .from("options")
+          .delete()
+          .in("id", rest.map((r) => r.id));
+      }
+    } finally {
+      setMerging(false);
+    }
+  }
 
   const duplicateOfExisting =
     title.trim().length > 0
@@ -41,9 +93,6 @@ export default function LobbyView({
     if (navigator.clipboard && navigator.clipboard.writeText) {
       await navigator.clipboard.writeText(link);
     } else {
-      // navigator.clipboard needs a secure context (https, or
-      // localhost) — it's undefined over a plain http:// IP address.
-      // Fall back to the old-school textarea + execCommand trick.
       const textarea = document.createElement("textarea");
       textarea.value = link;
       textarea.style.position = "fixed";
@@ -81,9 +130,6 @@ export default function LobbyView({
         // user cancelled the share sheet — not an error, do nothing
       }
     } else {
-      // No native share sheet available (desktop browsers, or a
-      // non-secure context) — fall back to copying the link, with its
-      // own feedback so it's clear which button actually did something.
       try {
         await copyLinkToClipboard(link);
         setShareCopied(true);
@@ -169,6 +215,27 @@ export default function LobbyView({
             Options ({options.length})
           </p>
         </div>
+
+        {duplicateGroups.length > 0 && myParticipant.is_host && (
+          <div className="mb-3 flex items-center justify-between gap-3 rounded-xl bg-coral/10 px-3 py-2.5">
+            <div className="flex items-start gap-1.5 text-xs text-coral">
+              <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+              <span>
+                Found {duplicateGroups.length} set{duplicateGroups.length > 1 ? "s" : ""} of
+                duplicate options.
+              </span>
+            </div>
+            <button
+              onClick={handleMergeDuplicates}
+              disabled={merging}
+              className="flex shrink-0 items-center gap-1.5 rounded-full bg-brand px-3 py-1.5 font-mono text-[11px] text-white disabled:opacity-50"
+            >
+              {merging ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+              Merge now
+            </button>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-2">
           {options.map((o) => (
             <div
