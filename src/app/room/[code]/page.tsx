@@ -76,7 +76,7 @@ export default function RoomPage() {
         imageUrl: o.image_url,
         imageType: o.image_type,
       }));
-  }, [options, swipes, myParticipant]);
+  }, [options, swipes, myParticipant, optimisticSwipedIds]);
 
   const myLastSwipe = useMemo(() => {
     if (!myParticipant) return null;
