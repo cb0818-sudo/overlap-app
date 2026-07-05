@@ -28,6 +28,22 @@ export default function RoomPage() {
   const [joinError, setJoinError] = useState<string | null>(null);
   const [revealing, setRevealing] = useState(false);
 
+  // Swiping fast can outrun the network round-trip to Supabase and back.
+  // This tracks "I already swiped this" the instant it happens locally,
+  // s o the deck never shows a card twice while waiting to hear back.
+  const [optimisticSwipedIds, setOptimisticSwipedIds] = useState<Set<string>>(new Set());
+  // A new round (back in the lobby) means any locally-tracked "already
+  // swiped" state from the previous round is stale — clear it. Done
+  // during render (React's sanctioned "reset state when a prop changes"
+  // pattern) rather than in an effect.
+  const [lastSeenStatus, setLastSeenStatus] = useState(room?.status);
+  if (room?.status !== lastSeenStatus) {
+    setLastSeenStatus(room?.status);
+    if (room?.status === "lobby" && optimisticSwipedIds.size > 0) {
+      setOptimisticSwipedIds(new Set());
+    }
+  }
+
   // Any client watching a 'swiping' room checks after every update whether
   // the deck is ready to reveal (perfect match, or everyone finished).
   useEffect(() => {
@@ -52,7 +68,7 @@ export default function RoomPage() {
       swipes.filter((s) => s.participant_id === myParticipant.id).map((s) => s.option_id)
     );
     return options
-      .filter((o) => !swipedIds.has(o.id))
+      .filter((o) => !swipedIds.has(o.id) && !optimisticSwipedIds.has(o.id))
       .map((o) => ({
         id: o.id,
         title: o.title,
@@ -71,19 +87,36 @@ export default function RoomPage() {
 
   async function handleSwipe(optionId: string, direction: "like" | "skip") {
     if (!myParticipant) return;
+    setOptimisticSwipedIds((prev) => new Set(prev).add(optionId));
     const { error } = await supabase.from("swipes").insert({
       room_id: code,
       participant_id: myParticipant.id,
       option_id: optionId,
       direction,
     });
-    if (error) console.error(error);
+    if (error) {
+      console.error(error);
+      setOptimisticSwipedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(optionId);
+        return next;
+      });
+    }
   }
 
   async function handleUndo() {
     if (!myLastSwipe) return;
+    const optionId = myLastSwipe.option_id;
     const { error } = await supabase.from("swipes").delete().eq("id", myLastSwipe.id);
-    if (error) console.error(error);
+    if (error) {
+      console.error(error);
+      return;
+    }
+    setOptimisticSwipedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(optionId);
+      return next;
+    });
   }
 
   async function handleRevealNow() {

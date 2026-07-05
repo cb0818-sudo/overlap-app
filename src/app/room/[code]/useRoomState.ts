@@ -128,6 +128,27 @@ export function useRoomState(code: string): RoomState {
     };
   }, [code]);
 
+
+  // Bulk deletes (like resetting swipes for "swipe again") notify
+  // subscribers per-row, and those can lag slightly behind a room's
+  // status flipping to 'swiping'. Force a fresh, authoritative re-fetch
+  // at that exact moment so a new round never starts with stale swipes
+  // lingering in local state.
+  useEffect(() => {
+    if (room?.status !== "swiping") return;
+    let cancelled = false;
+    supabase
+      .from("swipes")
+      .select("*")
+      .eq("room_id", code)
+      .then(({ data }) => {
+        if (!cancelled) setSwipes((data ?? []) as SwipeRow[]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [room?.status, code]);
+
   const clientId = getClientId();
   const myParticipant = participants.find((p) => p.client_id === clientId) ?? null;
 
