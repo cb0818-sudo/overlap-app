@@ -120,7 +120,6 @@ export default function LobbyView({
     const link = `${window.location.origin}/join?code=${code}`;
     const shareData = {
       title: room.title || "Join my Overlap room",
-      text: `Join my room on Overlap — code ${code}`,
       url: link,
     };
     if (navigator.share) {

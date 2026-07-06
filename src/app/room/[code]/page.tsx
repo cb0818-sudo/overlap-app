@@ -6,6 +6,7 @@ import { ArrowRight, Loader2, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { getClientId } from "@/lib/clientId";
 import { computeReveal, bestOptionSoFar } from "@/lib/matching";
+import { seededShuffle } from "@/lib/seededShuffle";
 import { useRoomState } from "./useRoomState";
 import { usePresenceCleanup, cleanUpParticipant } from "./usePresenceCleanup";
 import LobbyView from "./LobbyView";
@@ -76,12 +77,20 @@ export default function RoomPage() {
       .then(() => {});
   }, [room, options, participants, swipes, code]);
 
+  // Everyone gets the same set of options, but in their own shuffled
+  // order — stable across re-renders since it's seeded by participant id,
+  // not re-randomized every time.
+  const myShuffledOptions = useMemo(() => {
+    if (!myParticipant) return [];
+    return seededShuffle(options, myParticipant.id);
+  }, [options, myParticipant]);
+
   const myRemainingItems: SwipeItem[] = useMemo(() => {
     if (!myParticipant) return [];
     const swipedIds = new Set(
       swipes.filter((s) => s.participant_id === myParticipant.id).map((s) => s.option_id)
     );
-    return options
+    return myShuffledOptions
       .filter((o) => !swipedIds.has(o.id) && !optimisticSwipedIds.has(o.id))
       .map((o) => ({
         id: o.id,
@@ -90,7 +99,7 @@ export default function RoomPage() {
         imageUrl: o.image_url,
         imageType: o.image_type,
       }));
-  }, [options, swipes, myParticipant, optimisticSwipedIds]);
+  }, [myShuffledOptions, swipes, myParticipant, optimisticSwipedIds]);
 
   const myLastSwipe = useMemo(() => {
     if (!myParticipant) return null;
