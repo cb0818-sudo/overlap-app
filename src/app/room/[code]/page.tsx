@@ -157,18 +157,14 @@ export default function RoomPage() {
     setRevealing(false);
   }
 
-  async function handleLeaveRoom() {
-    if (!myParticipant) {
-      router.push("/");
-      return;
-    }
-    const confirmed = window.confirm("Leave this room? You'll be removed and any options you added will be removed too.");
+  async function handleRemoveParticipant(participantId: string) {
+    if (!myParticipant?.is_host) return;
+    const target = participants.find((p) => p.id === participantId);
+    const confirmed = window.confirm(
+      `Remove ${target?.display_name ?? "this person"} from the room? Anything they added will be removed too.`
+    );
     if (!confirmed) return;
-    // Do this explicitly rather than relying on presence-detection alone
-    // — presence is near-instant but not guaranteed instant, and this
-    // way it's already done before you even leave the page.
-    await cleanUpParticipant(myParticipant.id);
-    router.push("/");
+    await cleanUpParticipant(participantId);
   }
 
   async function handleJoinInline(e: React.FormEvent) {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { PartyPopper, RotateCcw, Home, Loader2 } from "lucide-react";
+import { PartyPopper, RotateCcw, Home, Loader2, Crown, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import type { OptionRow, Participant, Room } from "@/lib/types";
 
@@ -12,14 +12,18 @@ export default function RevealView({
   winner,
   participants,
   isHost,
+  myParticipantId,
   onLeave,
+  onRemoveParticipant,
 }: {
   code: string;
   room: Room;
   winner: OptionRow | null;
   participants: Participant[];
   isHost: boolean;
+  myParticipantId: string;
   onLeave: () => void;
+  onRemoveParticipant: (participantId: string) => void;
 }) {
   const [resetting, setResetting] = useState(false);
 
@@ -63,6 +67,30 @@ export default function RevealView({
         <h1 className="mt-2 font-display text-2xl font-extrabold text-surface">
           Nobody agreed on anything
         </h1>
+      )}
+
+      {isHost && (
+        <div className="mt-6 flex w-full flex-wrap justify-center gap-2">
+          {participants.map((p) => (
+            <div
+              key={p.id}
+              className="flex items-center gap-1.5 rounded-full border border-hairline bg-raise-1 px-3 py-1.5 text-sm text-surface"
+            >
+              {p.is_host && <Crown size={12} className="text-lime" />}
+              {p.display_name}
+              {p.id === myParticipantId && <span className="text-muted">(you)</span>}
+              {p.id !== myParticipantId && (
+                <button
+                  onClick={() => onRemoveParticipant(p.id)}
+                  aria-label={`Remove ${p.display_name}`}
+                  className="ml-1 text-muted hover:text-coral"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
       )}
 
       <div className="mt-8 flex w-full flex-col gap-3">
